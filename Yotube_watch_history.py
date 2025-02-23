@@ -30,23 +30,36 @@ for entry in data:
 print("data entry")
 # 🕒 Function to get video durations & descriptions from YouTube API
 def get_video_details(video_ids):
-    try:
-        video_details = {}
-        for i in range(0, len(video_ids), 50):  # YouTube API allows 50 IDs per request
-            batch_ids = video_ids[i : i + 50]
-            url = f"https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails&id={','.join(batch_ids)}&key={API_KEY}"
-            
-            response = requests.get(url).json()
-            
-            for item in response.get("items", []):
+    video_details = {}
+
+    for i in range(0, len(video_ids), 50):  # Process in batches of 50
+        batch_ids = video_ids[i : i + 50]
+        url = f"https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails&id={','.join(batch_ids)}&key={API_KEY}"
+        
+        response = requests.get(url)
+        
+        try:
+            data = response.json()
+
+            # Debugging: Print if API returns an error
+            if "error" in data:
+                print(f"❌ API Error: {data['error']['message']}")
+                continue  # Skip this batch
+
+            if "items" not in data or not data["items"]:
+                print(f"⚠️ No valid videos found for batch {batch_ids}")
+                continue  # Skip if no data
+
+            for item in data["items"]:
                 video_id = item["id"]
                 duration = item["contentDetails"]["duration"]
                 description = item["snippet"]["description"]
                 video_details[video_id] = {"duration": duration, "description": description}
-        print("video details updated")
-        return video_details
-    except:
-        print("ERROR")
+
+        except Exception as e:
+            print(f"⚠️ Error parsing response: {e}")
+
+    return video_details if video_details else {}  # Return empty dictionary instead of None
 
 # 📌 Fetch video durations & descriptions
 video_details = get_video_details(video_ids)
